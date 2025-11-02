@@ -1,0 +1,61 @@
+// scripts/deploy.js
+const hre = require("hardhat");
+
+async function main() {
+  console.log("🚀 Deploying EscrowPayment Contract...\n");
+
+  // Get the deployer account
+  const [deployer] = await hre.ethers.getSigners();
+  console.log("Deploying with account:", deployer.address);
+  
+  const balance = await hre.ethers.provider.getBalance(deployer.address);
+  console.log("Account balance:", hre.ethers.formatEther(balance), "ETH\n");
+
+  // Deploy the contract
+  const EscrowPayment = await hre.ethers.getContractFactory("EscrowPayment");
+  const escrow = await EscrowPayment.deploy();
+  
+  await escrow.waitForDeployment();
+  
+  const contractAddress = await escrow.getAddress();
+  
+  console.log("✅ EscrowPayment deployed successfully!");
+  console.log("📍 Contract Address:", contractAddress);
+  console.log("\n" + "=".repeat(60));
+  console.log("📝 IMPORTANT: Update the following:");
+  console.log("=".repeat(60));
+  console.log("1. Update CONTRACT_ADDRESS in frontend code:");
+  console.log(`   const CONTRACT_ADDRESS = "${contractAddress}";`);
+  console.log("\n2. Verify contract on Etherscan (if mainnet/testnet):");
+  console.log(`   npx hardhat verify --network <network> ${contractAddress}`);
+  console.log("=".repeat(60) + "\n");
+
+  // Get initial platform fee
+  const platformFee = await escrow.platformFeePercent();
+  console.log("Platform Fee:", platformFee.toString() + "%");
+  console.log("Platform Wallet:", deployer.address);
+  
+  // Save deployment info
+  const fs = require('fs');
+  const deploymentInfo = {
+    network: hre.network.name,
+    contractAddress: contractAddress,
+    deployer: deployer.address,
+    timestamp: new Date().toISOString(),
+    platformFee: platformFee.toString()
+  };
+  
+  fs.writeFileSync(
+    'deployment-info.json',
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+  
+  console.log("\n💾 Deployment info saved to deployment-info.json");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ Deployment failed:", error);
+    process.exit(1);
+  });
